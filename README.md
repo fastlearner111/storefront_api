@@ -39,8 +39,9 @@ ReDoc Specification: https://storefront-api-1sqc.onrender.com/redoc
 * **Hosting:** Render (Web Service + Managed PostgreSQL)
 
 
-```
+
 📁 Project Structure
+```
 storefront_api/
 ├── .github/workflows/
 │   └── ci.yml               # GitHub Actions CI/CD pipeline

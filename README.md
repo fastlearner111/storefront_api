@@ -16,7 +16,7 @@ Base API URL: https://storefront-api-1sqc.onrender.com
 Interactive Swagger UI Docs: https://storefront-api-1sqc.onrender.com/docs
 ReDoc Specification: https://storefront-api-1sqc.onrender.com/redoc
 
-```
+
 ✨ Core Features
 Tests: 7/7 passing, 82% coverage (pytest -v --cov=app).
 JWT Authentication: OAuth2 password flow (/login) issuing tokens that carry both user_id and role, verified on every protected request via get_current_user.
@@ -26,9 +26,9 @@ Wishlist with Composite Key: Wishlist uses a composite primary key (user_id, pro
 Product Search & Pagination: GET /products/ supports search, limit, and skip query params.
 Health Check: /health pings the database with SELECT 1 for container orchestrators.
 Dual-Environment DB Config: config.py supports both local dev (individual Postgres env vars) and platform deployments (a single DATABASE_URL, with automatic postgres:// → postgresql:// normalization).
-```
 
-```
+
+
 🛠️ Tech Stack
 Framework: FastAPI (Python 3.11+)
 Database & ORM: PostgreSQL + SQLAlchemy ORM
@@ -39,7 +39,7 @@ Containerization: Docker & Docker Compose
 Testing: Pytest
 CI/CD: GitHub Actions
 Hosting: Render (Web Service + Managed PostgreSQL)
-```
+
 
 ```
 📁 Project Structure
@@ -121,7 +121,7 @@ curl -X POST 'https://storefront-api-1sqc.onrender.com/wishlist/' \
 ```
 Response: {"message": "Successfully added to wishlist"}. dir=0 removes it; adding a duplicate returns 409 Conflict.
 
-```
+
 🏛️ Design Decisions & Trade-Offs
 
 RBAC via a dependency, not a decorator or middleware. require_admin wraps get_current_user and is attached per-route with dependencies=[Depends(require_admin)]. This keeps admin-only routes explicit and readable (you can see the restriction right in the route signature) rather than relying on a global rule that's easy to lose track of.
@@ -131,9 +131,9 @@ Wishlist uses a composite primary key instead of an auto-increment ID + unique c
 Role is embedded in the JWT at login time. create_access_token bakes role into the token payload, so require_admin doesn't need a DB lookup beyond fetching the user. The trade-off: if a user's role changes after a token is issued (e.g., an admin gets demoted), that token keeps the old role until it expires — role changes aren't revoked immediately. A production system handling this would need short-lived tokens plus refresh, or a DB check on every request instead of trusting the token claim.
 
 Dual-mode database config. config.py supports both individual local Postgres env vars and a single DATABASE_URL (with postgres:// → postgresql:// normalization for Heroku-style URLs), so the same codebase runs unmodified in local Docker Compose and on a managed Postgres host.
-```
 
-```
+
+
 ⚠️ Known Issues
 
 Being transparent about current gaps rather than hiding them:
@@ -145,7 +145,7 @@ Being transparent about current gaps rather than hiding them:
 - get_current_user can raise an unhandled error instead of a clean 401 if a valid token references a user that no longer exists in the database.
 
 - Rate limiting currently applies only to /login (5 requests/minute per IP) — product and wishlist routes are not yet rate-limited.
-```
+
 
 🚀 Getting Started Locally
 Prerequisites
@@ -187,7 +187,7 @@ docker compose exec api alembic upgrade head
 docker compose exec api pytest -v --cov=app
 ```
 
-```
+
 
 🔮 Future Improvements
 1. Fix the hardcoded JWT secret to read from settings.secret_key.
@@ -196,9 +196,8 @@ docker compose exec api pytest -v --cov=app
 
 3. Expand rate limiting to product and wishlist write endpoints, not just login.
 
-4.Immediate role revocation — re-check role against the database instead of trusting the JWT claim, or move to short-lived tokens with refresh.
+4. Immediate role revocation — re-check role against the database instead of trusting the JWT claim, or move to short-lived tokens with refresh.
 
 5. Order/checkout flow — currently the API covers catalog + wishlist, not purchasing.
 
 6. Pagination on the wishlist endpoint to match the product listing.
-```

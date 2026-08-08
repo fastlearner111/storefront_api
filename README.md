@@ -18,27 +18,25 @@ ReDoc Specification: https://storefront-api-1sqc.onrender.com/redoc
 
 
 ✨ Core Features
-Tests: 7/7 passing, 82% coverage (pytest -v --cov=app).
-JWT Authentication: OAuth2 password flow (/login) issuing tokens that carry both user_id and role, verified on every protected request via get_current_user.
-Role-Based Access Control: A require_admin dependency gates product create/update/delete to admin users only; product browsing (GET) stays public.
-Rate Limiting on Login: /login is limited to 5 requests/minute per IP via SlowAPI, to slow down credential-stuffing/brute-force attempts.
-Wishlist with Composite Key: Wishlist uses a composite primary key (user_id, product_id), so "already in wishlist" is enforced at the database level, not just in application code. A single toggle endpoint (dir=1/dir=0) adds or removes items.
-Product Search & Pagination: GET /products/ supports search, limit, and skip query params.
-Health Check: /health pings the database with SELECT 1 for container orchestrators.
-Dual-Environment DB Config: config.py supports both local dev (individual Postgres env vars) and platform deployments (a single DATABASE_URL, with automatic postgres:// → postgresql:// normalization).
-
-
+* **Tests:** 7/7 passing, 82% coverage (`pytest -v --cov=app`).
+* **JWT Authentication:** OAuth2 password flow (`/login`) issuing tokens that carry both `user_id` and `role`, verified on every protected request via `get_current_user`.
+* **Role-Based Access Control:** A `require_admin` dependency gates product create/update/delete to admin users only; product browsing (`GET`) stays public.
+* **Rate Limiting on Login:** `/login` is limited to 5 requests/minute per IP via SlowAPI to slow down credential-stuffing/brute-force attempts.
+* **Wishlist with Composite Key:** Wishlist uses a composite primary key (`user_id`, `product_id`), so "already in wishlist" is enforced at the database level. A single toggle endpoint (`dir=1`/`dir=0`) adds or removes items.
+* **Product Search & Pagination:** `GET /products/` supports search, limit, and skip query params.
+* **Health Check:** `/health` pings the database with `SELECT 1` for container orchestrators.
+* **Dual-Environment DB Config:** `config.py` supports both local dev and platform deployments.
 
 🛠️ Tech Stack
-Framework: FastAPI (Python 3.11+)
-Database & ORM: PostgreSQL + SQLAlchemy ORM
-Migrations: Alembic
-Security: Passlib/bcrypt password hashing, python-jose (JWT)
-Rate Limiting: SlowAPI
-Containerization: Docker & Docker Compose
-Testing: Pytest
-CI/CD: GitHub Actions
-Hosting: Render (Web Service + Managed PostgreSQL)
+* **Framework:** FastAPI (Python 3.11+)
+* **Database & ORM:** PostgreSQL + SQLAlchemy ORM
+* **Migrations:** Alembic
+* **Security:** Passlib/bcrypt password hashing, `python-jose` (JWT)
+* **Rate Limiting:** SlowAPI
+* **Containerization:** Docker & Docker Compose
+* **Testing:** Pytest
+* **CI/CD:** GitHub Actions
+* **Hosting:** Render (Web Service + Managed PostgreSQL)
 
 
 ```

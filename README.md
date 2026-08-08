@@ -1,12 +1,21 @@
 🛒 Storefront REST API
 
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF.svg)
+![Render](https://img.shields.io/badge/Render-Deployed-d97706.svg)
+
 ```
 An e-commerce REST API built with FastAPI, PostgreSQL, and SQLAlchemy, featuring JWT authentication, role-based access control (user vs. admin), a product catalog, and a per-user wishlist.
 ```
 
 🌐 Live Cloud Deployment
 Base API URL: https://storefront-api-1sqc.onrender.com
+
 Interactive Swagger UI Docs: https://storefront-api-1sqc.onrender.com/docs
+
 ReDoc Specification: https://storefront-api-1sqc.onrender.com/redoc
 
 ```

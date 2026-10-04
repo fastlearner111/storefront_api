@@ -6,7 +6,7 @@ from .config import settings
 # Build DB URL using your settings helper
 SQLALCHEMY_DATABASE_URL = settings.get_database_url()
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

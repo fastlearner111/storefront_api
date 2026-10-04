@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Depends, APIRouter, Response
+from fastapi import FastAPI, HTTPException, status, Depends, APIRouter, Response, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -16,13 +16,14 @@ router = APIRouter(
 @router.get("/", response_model=List[schemas.ProductOut])
 def get_products(
     db: Session = Depends(get_db),
-    limit: int = 10,
-    skip: int = 0,
-    search: str = ""
+    limit: int = Query(10, ge=1, le=100),
+    skip: int = Query(0, ge=0),
+    search: str = Query("", max_length=100),
 ):
     products = (
         db.query(models.Product)
         .filter(models.Product.name.contains(search))
+        .order_by(models.Product.id)
         .limit(limit)
         .offset(skip)
         .all()

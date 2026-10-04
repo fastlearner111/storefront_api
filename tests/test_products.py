@@ -19,7 +19,7 @@ def test_get_products(client):
     res = client.get("/products/")
     assert res.status_code == 200
     assert isinstance(res.json(), list)
-    
+
 def test_admin_can_update_product(authorized_admin_client, test_products):
     pid = test_products[0].id
     res = authorized_admin_client.put(f"/products/{pid}", json={**PRODUCT, "name": "Updated Lamp"})
@@ -54,3 +54,14 @@ def test_public_product_list_hides_owner_details(client, test_products):
     for item in res.json():
         assert "owner" not in item
     assert "hello123@gmail.com" not in res.text
+
+def test_negative_limit_is_rejected(client):
+    assert client.get("/products/?limit=-1").status_code == 422
+
+
+def test_negative_skip_is_rejected(client):
+    assert client.get("/products/?skip=-1").status_code == 422
+
+
+def test_limit_has_an_upper_bound(client):
+    assert client.get("/products/?limit=100000").status_code == 422

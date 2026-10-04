@@ -2,12 +2,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app import models, utils
 from app.config import settings
+
+# Safety rail: these tests drop and recreate every table. Never point them at a real database.
+# This must run before the app is imported, because importing the app connects to the database.
+assert settings.database_hostname in ("localhost", "127.0.0.1", "db"), (
+    f"Refusing to run tests against host {settings.database_hostname!r}"
+)
+
+from app import models, utils
 from app.database import Base, get_db
 from app.main import app
 from app.oauth2 import create_access_token
-
 # Disable rate limiting during automated test runs
 app.state.limiter.enabled = False
 

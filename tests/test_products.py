@@ -1,26 +1,10 @@
-def test_create_product(client):
-    # Create a user
-    client.post("/users/", json={
-        "email": "prod@example.com",
-        "password": "password123",
-        "role": "admin"
-    })
-
-    # Login
-    login = client.post("/login", data={
-        "username": "prod@example.com",
-        "password": "password123"
-    })
-    token = login.json()["access_token"]
-
-    # Create product
-    res = client.post("/products/", json={
+def test_create_product(authorized_admin_client):
+    res = authorized_admin_client.post("/products/", json={
         "name": "Laptop",
         "description": "Gaming laptop",
         "price": 1299.99,
-        "is_available": True
-    }, headers={"Authorization": f"Bearer {token}"})
-
+        "is_available": True,
+    })
     assert res.status_code == 201
     data = res.json()
     assert data["name"] == "Laptop"

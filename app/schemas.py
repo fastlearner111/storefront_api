@@ -42,11 +42,7 @@ class ProductOut(ProductResponse):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    role: Optional[str] = "user"
-
-class UserCreateAdmin(UserCreate):
-    role: str = "admin"
-
+    
 
 class UserLogin(BaseModel):
     email: EmailStr

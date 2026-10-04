@@ -18,7 +18,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     new_user = models.User(
         email=user.email,
         password=hashed_password,
-        role=user.role
+        role="user",
     )
     
     db.add(new_user)

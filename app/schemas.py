@@ -31,7 +31,7 @@ class ProductResponse(ProductBase):
     id: int
     created_at: datetime
     owner_id: int
-    owner: UserOut
+    #owner: UserOut
     model_config = ConfigDict(from_attributes=True)
 
 

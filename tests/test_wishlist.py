@@ -53,3 +53,11 @@ def test_wishlist_is_per_user(authorized_client, test_products, test_user2):
 
 def test_wishlist_requires_login(client):
     assert client.get("/wishlist/").status_code == 401
+
+def test_wishlist_does_not_expose_owner_details(authorized_client, test_products):
+    pid = test_products[3].id  # this product belongs to the other test user
+    authorized_client.post("/wishlist/", json={"product_id": pid, "dir": 1})
+    res = authorized_client.get("/wishlist/")
+    assert res.status_code == 200
+    assert "hello123456@gmail.com" not in res.text
+    assert "owner" not in res.json()[0]["product"]

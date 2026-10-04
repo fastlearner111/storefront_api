@@ -38,3 +38,7 @@ def test_login_nonexistent_user(client):
     })
 
     assert res.status_code == 403
+
+def test_login_with_overlong_password_is_a_clean_403(client, test_user):
+    res = client.post("/login", data={"username": test_user["email"], "password": "a" * 100})
+    assert res.status_code == 403

@@ -15,5 +15,9 @@ def hash(password: str) -> str:
 
 def verify(plain_password: str, hashed_password: str) -> bool:
     pwd_bytes = plain_password.encode('utf-8')
+    # Registration rejects passwords over 72 bytes, so no real account has one.
+    # Treat it as a wrong password instead of letting bcrypt raise.
+    if len(pwd_bytes) > 72:
+        return False
     hashed_bytes = hashed_password.encode('utf-8')
     return bcrypt.checkpw(pwd_bytes, hashed_bytes)

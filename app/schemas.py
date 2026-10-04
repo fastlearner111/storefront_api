@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-
+from typing import Annotated, Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
 
 # --- Product Schemas ---
 
@@ -13,8 +12,10 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
-    pass
-
+    # Input limits live here and not on ProductBase, so existing rows can always be returned.
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+    description: Annotated[str, StringConstraints(max_length=2000)]
+    price: float = Field(gt=0, le=1_000_000)
 
 # --- User Schemas ---
 

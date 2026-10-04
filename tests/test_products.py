@@ -65,3 +65,41 @@ def test_negative_skip_is_rejected(client):
 
 def test_limit_has_an_upper_bound(client):
     assert client.get("/products/?limit=100000").status_code == 422
+
+VALID_PRODUCT = {"name": "Desk Lamp", "description": "Adjustable LED lamp", "price": 24.99}
+
+
+def test_negative_price_is_rejected(authorized_admin_client):
+    res = authorized_admin_client.post("/products/", json={**VALID_PRODUCT, "price": -5})
+    assert res.status_code == 422
+
+
+def test_zero_price_is_rejected(authorized_admin_client):
+    res = authorized_admin_client.post("/products/", json={**VALID_PRODUCT, "price": 0})
+    assert res.status_code == 422
+
+
+def test_empty_name_is_rejected(authorized_admin_client):
+    res = authorized_admin_client.post("/products/", json={**VALID_PRODUCT, "name": ""})
+    assert res.status_code == 422
+
+
+def test_whitespace_only_name_is_rejected(authorized_admin_client):
+    res = authorized_admin_client.post("/products/", json={**VALID_PRODUCT, "name": "   "})
+    assert res.status_code == 422
+
+
+def test_absurd_price_is_rejected(authorized_admin_client):
+    res = authorized_admin_client.post("/products/", json={**VALID_PRODUCT, "price": 1e12})
+    assert res.status_code == 422
+
+
+def test_update_applies_the_same_rules(authorized_admin_client, test_products):
+    pid = test_products[0].id
+    res = authorized_admin_client.put(f"/products/{pid}", json={**VALID_PRODUCT, "price": -1})
+    assert res.status_code == 422
+
+
+def test_smallest_valid_price_is_accepted(authorized_admin_client):
+    res = authorized_admin_client.post("/products/", json={**VALID_PRODUCT, "price": 0.01})
+    assert res.status_code == 201

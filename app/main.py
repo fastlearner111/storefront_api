@@ -36,15 +36,12 @@ def rate_limit_handler(request, exc):
 def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
-        return {
-            "status": "ok",
-            "database": "connected"
-        }
+        return {"status": "ok", "database": "connected"}
     except Exception:
-        return {
-            "status": "ok",
-            "database": "error"
-        }
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "database": "unreachable"},
+        )
 
 
 @app.get("/")

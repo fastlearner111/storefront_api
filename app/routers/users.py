@@ -34,6 +34,14 @@ def get_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
+    # Users may read their own record; admins may read any record.
+    # The permission check comes first so a non-admin learns nothing about which ids exist.
+    if current_user.id != id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this user"
+        )
+
     user = db.query(models.User).filter(models.User.id == id).first()
 
     if not user:

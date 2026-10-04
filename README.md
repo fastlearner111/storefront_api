@@ -8,7 +8,6 @@
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF.svg)
 ![Render](https://img.shields.io/badge/Render-Deployed-d97706.svg)
 
-
 An e-commerce REST API built with FastAPI, PostgreSQL, and SQLAlchemy: JWT authentication, role-based access control (user vs admin), a product catalog with search and pagination, and a per-user wishlist.
 
 **Live deployment**
@@ -120,27 +119,27 @@ docker-compose.yml, Dockerfile
 
 **Wishlist uses a composite primary key** (`user_id`, `product_id`) instead of an auto-increment id plus a unique constraint, so the schema itself rejects a duplicate pair.
 
-**Input is validated at the edge.** Pagination bounds, the bcrypt password limit, and the wishlist `dir` value are checked by request schemas, so bad input gets a 422 before it reaches the database.
+**Input is validated at the edge.** Pagination bounds, the bcrypt password limit, the wishlist `dir` value, and product names and prices are checked by request schemas, so bad input gets a 422 before it reaches the database.
 
 **One config for local and hosted databases.** `config.py` accepts either individual database variables or a single `DATABASE_URL`, and rewrites `postgres://` to `postgresql://`, so the same code runs in Docker Compose and on a managed host.
 
 ## Testing
 
-45 tests. CI runs the suite against a PostgreSQL service on every push and pull request, with coverage reported by `pytest --cov=app`.
+52 tests and 94% line coverage (`pytest --cov=app`). CI runs the suite against a PostgreSQL service on every push and pull request.
 
 ```bash
 docker compose up -d --build
 docker compose exec api pytest -v --cov=app
 ```
 
-The suite covers authentication and login edge cases, the rate limiter's key function, products (admin-only create, update, and delete, plus pagination bounds), regression tests for each security bug below, users, the wishlist (duplicate adds, removal, per-user lists, owner details staying hidden), and `/health`.
+The suite covers authentication and login edge cases, the rate limiter's key function, products (admin-only create, update, and delete, plus input validation and pagination bounds), regression tests for each security bug below, users, the wishlist (duplicate adds, removal, per-user lists, owner details staying hidden), and `/health`.
 
 What the suite does and does not do:
 - Tests use real signed tokens from the real token code, and each test starts from freshly created tables.
 - `tests/conftest.py` refuses to run against a database host that is not local, because the tests drop and recreate every table.
 - The login rate limiter is disabled during the suite. Only its key function has unit tests.
-- Product name and price validation is not tested (it does not exist yet, see Known limitations).
 - The "token for a deleted user returns 401" path and the concurrent wishlist add path have no tests.
+- The `DATABASE_URL` configuration path that production uses is not exercised by the suite, which connects through the individual database variables.
 
 ## Bugs found and fixed
 
@@ -160,6 +159,7 @@ What the suite does and does not do:
 - **Negative `limit` or `skip` returned a 500, and `limit` had no upper bound,** so one request could return the whole table. Both are validated now (limit 1 to 100, skip 0 or more) and pages are ordered by id.
 - **Any wishlist `dir` below 1 was treated as a removal.** The schema now accepts only 0 or 1. Two simultaneous adds of the same item now return 409 instead of a database error (a code fix without a test, since the race is hard to reproduce).
 - **`/health` reported `"status": "ok"` when the database check failed.** It now returns 503.
+- **Product create and update accepted an empty name and zero, negative, or absurd prices.** They now return 422 (name 1 to 100 characters after trimming, description up to 2000, price above 0 and up to 1,000,000), with tests for both create and update.
 - **A token for a user who no longer exists crashed `get_current_user`.** It now returns a 401.
 - **The local Docker Compose file did not work.** It used GitHub Actions secret syntax and pointed the API at `localhost` instead of the database container. Rewritten.
 - **The test suite could drop tables in a real database.** It now refuses to run against a non-local host.
@@ -167,7 +167,6 @@ What the suite does and does not do:
 ## Known limitations
 
 - **Login rate limiting is best effort.** `/login` is limited to 5 requests per minute per client IP, and it limits correctly from separate networks. A client that forges proxy headers can still evade it in production. Counters are in memory and Render runs a single worker, so they reset on a restart. Clients behind one shared network address share one bucket. Registration and the other endpoints have no rate limit.
-- **Product input is lightly validated.** The schema only checks types for `name`, `description`, and `price`, so an empty name or a zero or negative price is accepted. Only admins can create or update products.
 - **Prices are stored as floating point.** Money should use `NUMERIC` or integer cents.
 - **Registration reveals whether an email is already registered** (409), and emails are case-sensitive.
 - **Access tokens cannot be revoked before they expire,** and there are no refresh tokens.

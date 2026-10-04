@@ -1,202 +1,187 @@
-🛒 Storefront REST API
+# Storefront REST API
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF.svg)
-![Render](https://img.shields.io/badge/Render-Deployed-d97706.svg)
+![CI](https://github.com/fastlearner111/storefront_api/actions/workflows/ci.yml/badge.svg)
 
+An e-commerce REST API built with FastAPI, PostgreSQL, and SQLAlchemy: JWT authentication, role-based access control (user vs admin), a product catalog with search and pagination, and a per-user wishlist.
 
-An e-commerce REST API built with FastAPI, PostgreSQL, and SQLAlchemy, featuring JWT authentication, role-based access control (user vs. admin), a product catalog, and a per-user wishlist.
+**Live deployment**
+- Base URL: https://storefront-api-1sqc.onrender.com
+- Swagger UI: https://storefront-api-1sqc.onrender.com/docs
+- ReDoc: https://storefront-api-1sqc.onrender.com/redoc
 
+Hosted on Render's free tier (Docker) with a Supabase PostgreSQL database. After a period of inactivity the first request can be slow while the instance wakes up.
 
-🌐 Live Cloud Deployment
-Base API URL: https://storefront-api-1sqc.onrender.com
-Interactive Swagger UI Docs: https://storefront-api-1sqc.onrender.com/docs
-ReDoc Specification: https://storefront-api-1sqc.onrender.com/redoc
+## What it does
 
+- Registration and login with bcrypt-hashed passwords and JWT bearer tokens (OAuth2 password flow, form-encoded `/login`). Passwords are limited to 72 bytes, the most bcrypt can use.
+- Two roles. Every public registration creates a `user`. Admins are created by promoting an account in the database. The server reads the role from the database on every request and never trusts the role claim inside the token.
+- Admin-only product create, update, and delete through a reusable `require_admin` dependency. Browsing products is public.
+- Product list with `search`, `limit` (1 to 100), and `skip`, ordered by id so pages are stable. Responses include `owner_id` but no owner details.
+- Per-user wishlist with a composite primary key (`user_id`, `product_id`), added or removed through one toggle endpoint
+- `GET /users/{id}` is limited to the user themselves or an admin
+- Login rate limit of 5 requests per minute per client IP, best effort (see Known limitations)
+- `/health` endpoint that returns 503 when the database check fails
 
-✨ Core Features
-* **Tests:** 7/7 passing, 82% coverage (`pytest -v --cov=app`).
-* **JWT Authentication:** OAuth2 password flow (`/login`) issuing tokens that carry both `user_id` and `role`, verified on every protected request via `get_current_user`.
-* **Role-Based Access Control:** A `require_admin` dependency gates product create/update/delete to admin users only; product browsing (`GET`) stays public.
-* **Rate Limiting on Login:** `/login` is limited to 5 requests/minute per IP via SlowAPI to slow down credential-stuffing/brute-force attempts.
-* **Wishlist with Composite Key:** Wishlist uses a composite primary key (`user_id`, `product_id`), so "already in wishlist" is enforced at the database level. A single toggle endpoint (`dir=1`/`dir=0`) adds or removes items.
-* **Product Search & Pagination:** `GET /products/` supports search, limit, and skip query params.
-* **Health Check:** `/health` pings the database with `SELECT 1` for container orchestrators.
-* **Dual-Environment DB Config:** `config.py` supports both local dev and platform deployments.
+## Stack
 
-🛠️ Tech Stack
-* **Framework:** FastAPI (Python 3.11+)
-* **Database & ORM:** PostgreSQL + SQLAlchemy ORM
-* **Migrations:** Alembic
-* **Security:** Passlib/bcrypt password hashing, `python-jose` (JWT)
-* **Rate Limiting:** SlowAPI
-* **Containerization:** Docker & Docker Compose
-* **Testing:** Pytest
-* **CI/CD:** GitHub Actions
-* **Hosting:** Render (Web Service + Managed PostgreSQL)
+Python 3.11, FastAPI, SQLAlchemy, PostgreSQL (Supabase in production, a Postgres container locally), bcrypt, python-jose, SlowAPI, Pytest, Docker and Docker Compose, GitHub Actions, Render.
 
+## API
 
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| POST | `/users/` | none | JSON `{"email", "password"}`. Role is always `user`. 409 on a duplicate email, 422 on invalid input. |
+| POST | `/login` | none | Form-encoded `username` and `password`. 403 on bad credentials, 429 over the limit. |
+| GET | `/users/{id}` | bearer | Own record or admin. 403 otherwise. |
+| GET | `/products/` | none | Query params `search` (max 100 characters), `limit` (1 to 100, default 10), `skip` (0 or more) |
+| GET | `/products/{id}` | none | 404 if missing |
+| POST | `/products/` | bearer, admin | 401 without a token, 403 for non-admins |
+| PUT | `/products/{id}` | bearer, admin | 403 for non-admins |
+| DELETE | `/products/{id}` | bearer, admin | 204, 403 for non-admins |
+| POST | `/wishlist/` | bearer | `{"product_id", "dir"}` with `dir` 0 or 1. `dir=1` adds (409 on a duplicate), `dir=0` removes. |
+| GET | `/wishlist/` | bearer | Items for the logged-in user |
+| GET | `/health` | none | 200 when the database answers, 503 when it does not |
 
-📁 Project Structure
-```
-storefront_api/
-├── .github/workflows/
-│   └── ci.yml               # GitHub Actions CI/CD pipeline
-├── alembic/                 # Alembic migration scripts & versions
-├── app/
-│   ├── routers/
-│   │   ├── auth.py          # Login (JWT issuance, rate-limited)
-│   │   ├── users.py         # Registration, get-by-id
-│   │   ├── products.py      # Public browse, admin-only write/delete
-│   │   └── wishlist.py      # Add/remove/list wishlist items
-│   ├── config.py            # Pydantic Settings (local + platform env support)
-│   ├── database.py          # SQLAlchemy engine & session setup
-│   ├── dependencies.py      # require_admin route guard
-│   ├── limiter.py           # SlowAPI limiter instance
-│   ├── main.py               # FastAPI app setup, routers, health check
-│   ├── models.py             # SQLAlchemy models (Product, User, Wishlist)
-│   ├── oauth2.py             # JWT creation/verification, get_current_user
-│   ├── schemas.py            # Pydantic request/response schemas
-│   └── utils.py              # bcrypt password hash/verify
-├── tests/                    # Pytest suite
-├── docker-compose.yml         # Local multi-container configuration
-├── Dockerfile                  # API container recipe
-├── alembic.ini                  # Alembic config
-└── requirements.txt              # Python dependencies
-```
+**Register** (a `role` field in the request is ignored)
 
-🔌 API Request / Response Examples
-
-1. Register (POST /users/)
 ```bash
 curl -X POST 'https://storefront-api-1sqc.onrender.com/users/' \
   -H 'Content-Type: application/json' \
   -d '{"email": "user@example.com", "password": "yourpassword"}'
 ```
 
-Response (201 Created):
+Response (201):
+
 ```json
-{
-  "id": 1,
-  "email": "user@example.com",
-  "role": "user",
-  "created_at": "2026-08-08T00:00:00.000Z"
-}
+{"id": 5, "email": "user@example.com", "role": "user", "created_at": "2026-10-04T14:21:00.741221Z"}
 ```
 
-2. Login (POST /login) — form-encoded, OAuth2 password flow
+**Log in** (form-encoded, so the Authorize button in Swagger works)
+
 ```bash
 curl -X POST 'https://storefront-api-1sqc.onrender.com/login' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'username=user@example.com&password=yourpassword'
 ```
-  Response (200 OK):
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer"
-}
-```
-Wrong credentials → 403 Forbidden. More than 5 requests/minute from the same IP → 429 Too Many Requests.
 
-3. Create Product (admin only)
+Response (200): `{"access_token": "<jwt>", "token_type": "bearer"}`
+
+**Create a product** (admin only)
+
 ```bash
 curl -X POST 'https://storefront-api-1sqc.onrender.com/products/' \
   -H 'Authorization: Bearer <admin_jwt_token>' \
   -H 'Content-Type: application/json' \
   -d '{"name": "Desk Lamp", "description": "Adjustable LED lamp", "price": 24.99}'
 ```
-Non-admin token → 403 Forbidden: "Admins only".
 
-4. Toggle Wishlist Item
+A non-admin token returns 403 `Admins only`, and no token returns 401.
+
+**Toggle a wishlist item**
+
 ```bash
 curl -X POST 'https://storefront-api-1sqc.onrender.com/wishlist/' \
   -H 'Authorization: Bearer <jwt_token>' \
   -H 'Content-Type: application/json' \
   -d '{"product_id": 1, "dir": 1}'
 ```
-Response: {"message": "Successfully added to wishlist"}. dir=0 removes it; adding a duplicate returns 409 Conflict.
 
+## Project structure
 
-🏛️ Design Decisions & Trade-Offs
-
-RBAC via a dependency, not a decorator or middleware. require_admin wraps get_current_user and is attached per-route with dependencies=[Depends(require_admin)]. This keeps admin-only routes explicit and readable (you can see the restriction right in the route signature) rather than relying on a global rule that's easy to lose track of.
-
-Wishlist uses a composite primary key instead of an auto-increment ID + unique constraint. (user_id, product_id) as the primary key means "duplicate wishlist entry" is structurally impossible at the database level, not just checked in application code — one less place for a bug to hide.
-
-Role is embedded in the JWT at login time. create_access_token bakes role into the token payload, so require_admin doesn't need a DB lookup beyond fetching the user. The trade-off: if a user's role changes after a token is issued (e.g., an admin gets demoted), that token keeps the old role until it expires — role changes aren't revoked immediately. A production system handling this would need short-lived tokens plus refresh, or a DB check on every request instead of trusting the token claim.
-
-Dual-mode database config. config.py supports both individual local Postgres env vars and a single DATABASE_URL (with postgres:// → postgresql:// normalization for Heroku-style URLs), so the same codebase runs unmodified in local Docker Compose and on a managed Postgres host.
-
-
-
-⚠️ Known Issues
-
-Being transparent about current gaps rather than hiding them:
-
-- JWT secret is currently hardcoded in oauth2.py rather than read from config.py/.env — the SECRET_KEY environment variable is defined but not yet wired in.
-
- - /health reports "status": "ok" even when the database ping fails (only the nested "database" field flips to "error") — a monitoring system polling this endpoint would not currently catch a DB outage.
-
-- get_current_user can raise an unhandled error instead of a clean 401 if a valid token references a user that no longer exists in the database.
-
-- Rate limiting currently applies only to /login (5 requests/minute per IP) — product and wishlist routes are not yet rate-limited.
-
-
-🚀 Getting Started Locally
-Prerequisites
-Docker & Docker Compose
-Git
-
-1. Clone the Repository
-```bash
-git clone https://github.com/fastlearner111/storefront_api.git
-cd storefront_api
+```
+app/
+  routers/       auth, users, products, wishlist
+  config.py      settings from environment variables
+  database.py    SQLAlchemy engine and session
+  dependencies.py  require_admin guard
+  limiter.py     SlowAPI limiter and client key function
+  main.py        app setup, routers, health check
+  models.py      User, Product, Wishlist
+  oauth2.py      JWT creation and verification, get_current_user
+  schemas.py     Pydantic request and response models
+  utils.py       bcrypt hash and verify
+tests/           Pytest suite
+alembic/         migration (see Known limitations)
+docker-compose.yml, Dockerfile
+.github/workflows/ci.yml
 ```
 
-2. Create a .env File
-```env
-DATABASE_HOSTNAME=db
-DATABASE_PORT=5432
-DATABASE_USERNAME=postgres
-DATABASE_PASSWORD=postgres
-DATABASE_NAME=storefront
+## Design decisions
 
-SECRET_KEY=your_super_secret_jwt_key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-```
+**RBAC through a dependency.** `require_admin` wraps `get_current_user` and is attached to each admin route with `dependencies=[Depends(require_admin)]`, so the restriction is visible in the route definition.
 
-3. Start the Docker Stack
+**The database decides the role.** The token carries a `role` claim, but `get_current_user` loads the user from the database and uses the stored role. A token that claims `admin` for a normal user is still a normal user, and demoting an admin takes effect on the next request. This costs one database lookup per request.
+
+**Wishlist uses a composite primary key** (`user_id`, `product_id`) instead of an auto-increment id plus a unique constraint, so the schema itself rejects a duplicate pair.
+
+**Input is validated at the edge.** Pagination bounds, the bcrypt password limit, and the wishlist `dir` value are checked by request schemas, so bad input gets a 422 before it reaches the database.
+
+**One config for local and hosted databases.** `config.py` accepts either individual database variables or a single `DATABASE_URL`, and rewrites `postgres://` to `postgresql://`, so the same code runs in Docker Compose and on a managed host.
+
+## Testing
+
+45 tests. CI runs the suite against a PostgreSQL service on every push and pull request, with coverage reported by `pytest --cov=app`.
+
 ```bash
-docker compose up --build
-
-API available at http://localhost:8000 and http://localhost:8000/docs.
-
-4. Apply Database Migrations
-```bash
-docker compose exec api alembic upgrade head
-```
-
-🧪 Running Tests
-```bash
+docker compose up -d --build
 docker compose exec api pytest -v --cov=app
 ```
 
+The suite covers authentication and login edge cases, the rate limiter's key function, products (admin-only create, update, and delete, plus pagination bounds), regression tests for each security bug below, users, the wishlist (duplicate adds, removal, per-user lists, owner details staying hidden), and `/health`.
 
+What the suite does and does not do:
+- Tests use real signed tokens from the real token code, and each test starts from freshly created tables.
+- `tests/conftest.py` refuses to run against a database host that is not local, because the tests drop and recreate every table.
+- The login rate limiter is disabled during the suite. Only its key function has unit tests.
+- Product name and price validation is not tested (it does not exist yet, see Known limitations).
+- The "token for a deleted user returns 401" path and the concurrent wishlist add path have no tests.
 
-🔮 Future Improvements
-1. Fix the hardcoded JWT secret to read from settings.secret_key.
+## Bugs found and fixed
 
-2. Fix /health to return a non-200 status and "status": "error" when the DB ping fails.
+**Security**
 
-3. Expand rate limiting to product and wishlist write endpoints, not just login.
+- **Anyone could register as an admin.** Registration passed the caller's `role` field straight into the database. Fixed so every registration creates a `user`, with a test that fails if the field is honored again. Verified on the deployed API: the same request that used to return `"role": "admin"` now returns `"role": "user"`.
+- **The JWT secret was a hardcoded string in the repository.** Anyone could sign a token claiming to be an admin. The secret now comes from the environment and was rotated in production. Verified on the deployed API: a token signed with the old string gets a 401.
+- **The token's role claim overrode the database role.** `get_current_user` copied the role from the token onto the user. Fixed so the database role is the only source of truth. A test fails if the override comes back.
+- **The public product list exposed every owner's email and role.** Product responses now return `owner_id` only, with a test, and the change was verified on the deployed API.
+- **Any logged-in user could read any other user's email and role** through `GET /users/{id}`. Now limited to the user themselves or an admin, with tests.
+- **The login rate limiter never limited anything in production.** Behind Render's proxy the app only sees Render's internal proxy addresses, which vary per request, so no address ever reached the limit. It now keys on a proxy-appended `X-Forwarded-For` entry and limits correctly from separate networks (see Known limitations for what it still cannot do).
 
-4. Immediate role revocation — re-check role against the database instead of trusting the JWT claim, or move to short-lived tokens with refresh.
+**Reliability**
 
-5. Order/checkout flow — currently the API covers catalog + wishlist, not purchasing.
+- **A duplicate email returned a 500.** The database rejected the second insert and nothing caught it. It now returns 409.
+- **A password longer than 72 bytes returned a 500** at registration and at login, because bcrypt refuses longer input. Registration now rejects it with a 422, counting bytes and not characters, and login treats it as a wrong password.
+- **Negative `limit` or `skip` returned a 500, and `limit` had no upper bound,** so one request could return the whole table. Both are validated now (limit 1 to 100, skip 0 or more) and pages are ordered by id.
+- **Any wishlist `dir` below 1 was treated as a removal.** The schema now accepts only 0 or 1. Two simultaneous adds of the same item now return 409 instead of a database error (a code fix without a test, since the race is hard to reproduce).
+- **`/health` reported `"status": "ok"` when the database check failed.** It now returns 503.
+- **A token for a user who no longer exists crashed `get_current_user`.** It now returns a 401.
+- **The local Docker Compose file did not work.** It used GitHub Actions secret syntax and pointed the API at `localhost` instead of the database container. Rewritten.
+- **The test suite could drop tables in a real database.** It now refuses to run against a non-local host.
 
-6. Pagination on the wishlist endpoint to match the product listing.
+## Known limitations
+
+- **Login rate limiting is best effort.** `/login` is limited to 5 requests per minute per client IP, and it limits correctly from separate networks. A client that forges proxy headers can still evade it in production. Counters are in memory and Render runs a single worker, so they reset on a restart. Clients behind one shared network address share one bucket. Registration and the other endpoints have no rate limit.
+- **Product input is lightly validated.** The schema only checks types for `name`, `description`, and `price`, so an empty name or a zero or negative price is accepted. Only admins can create or update products.
+- **Prices are stored as floating point.** Money should use `NUMERIC` or integer cents.
+- **Registration reveals whether an email is already registered** (409), and emails are case-sensitive.
+- **Access tokens cannot be revoked before they expire,** and there are no refresh tokens.
+- **There is no admin signup.** Promote an account with `UPDATE users SET role = 'admin' WHERE email = '...'`.
+- **The old hardcoded JWT secret is still in the git history.** It was rotated and no longer signs valid tokens.
+- **Alembic has one migration, but the app creates tables at startup** with `create_all`, and the migration has not been verified against an empty database.
+
+## Running locally
+
+Prerequisites: Docker and Docker Compose.
+
+```bash
+git clone https://github.com/fastlearner111/storefront_api.git
+cd storefront_api
+docker compose up --build
+```
+
+The API is available at http://localhost:8000 (docs at `/docs`) after about 15 seconds on first start. Compose starts the API (service `api`) and PostgreSQL (service `db`) and creates the tables at startup. It uses development defaults for the database password and the JWT secret. Set your own for anything beyond local use:
+
+```bash
+SECRET_KEY=your-own-random-value docker compose up --build
+```
+
+If port 5432 is already in use, stop the other Postgres container first.

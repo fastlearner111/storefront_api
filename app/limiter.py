@@ -3,10 +3,10 @@ from slowapi.util import get_remote_address
 
 
 def client_key(request):
-    # Behind Render the app only sees Render's internal proxy address, and it varies per request.
-    # Clients can write anything they like at the START of X-Forwarded-For, but the proxies append
-    # their own entries at the END: the real client address, then Cloudflare, then Render.
-    # So the third entry from the right is the one the client cannot forge.
+        # Best effort. Behind Render the app only sees Render's internal proxy address, which varies per
+    # request, so keying on it never limited anything. Taking the third-from-right X-Forwarded-For
+    # entry limits honest clients per real address (verified from two networks), but a client that
+    # sends forged proxy headers can still evade it in production. See the README's known limitations.
     xff = request.headers.get("x-forwarded-for", "")
     parts = [p.strip() for p in xff.split(",") if p.strip()]
     if len(parts) >= 3:

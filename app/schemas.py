@@ -74,4 +74,4 @@ class TokenData(BaseModel):
 
 class Wishlist(BaseModel):
     product_id: int
-    dir: int = Field(le=1)
+    dir: int = Field(ge=0, le=1)

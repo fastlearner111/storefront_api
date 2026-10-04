@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from .. import schemas, database, models, oauth2
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(
     prefix="/wishlist",
@@ -38,7 +39,15 @@ def wishlist_action(
             user_id=current_user.id
         )
         db.add(new_wishlist)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            # Two simultaneous adds of the same item, or the product vanished before the insert.
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Could not add to wishlist; it may already be there"
+            )
         return {"message": "Successfully added to wishlist"}
 
     else:

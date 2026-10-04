@@ -18,3 +18,9 @@ def test_user_cannot_read_other_user(authorized_client, test_user2):
 
 def test_admin_can_read_any_user(authorized_admin_client, test_user):
     assert authorized_admin_client.get(f"/users/{test_user['id']}").status_code == 200
+
+def test_duplicate_email_is_rejected(client):
+    payload = {"email": "dup@example.com", "password": "password123"}
+    assert client.post("/users/", json=payload).status_code == 201
+    res = client.post("/users/", json=payload)
+    assert res.status_code == 409

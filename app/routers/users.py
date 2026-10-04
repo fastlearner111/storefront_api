@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from .. import models, oauth2, schemas, utils
 from ..database import get_db
+
 
 router = APIRouter(
     prefix="/users",
@@ -11,20 +13,26 @@ router = APIRouter(
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Hash the password
     hashed_password = utils.hash(user.password)
 
-    # Hardcode 'user' role for public registration
+    # Public registration always creates a normal user. The caller cannot choose a role.
     new_user = models.User(
         email=user.email,
         password=hashed_password,
         role="user",
     )
-    
+
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with this email already exists"
+        )
     db.refresh(new_user)
-    
+
     return new_user
 
 

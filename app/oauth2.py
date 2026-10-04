@@ -49,5 +49,5 @@ def get_current_user(
         raise credentials_exception
 
     # The database decides the role. The role claim in the token is never trusted.
-    #user.role = token_data.role ----  this was just for testing to see
+    
     return user
